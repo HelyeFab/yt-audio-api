@@ -1,0 +1,33 @@
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Dependency directories
+jspm_packages/
+
+# dotenv environment variables file (if you use it)
+.env
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid
+/tmp/
+*.tar
+
+# Build artifacts
+dist/
+build/
+
+# Optional: VSCode config
+.vscode/
+
+# Optional: local backup/editor files
+*.swp
+*~
