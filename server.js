@@ -29,15 +29,23 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// Health check endpoint
+// Health check endpoints
 app.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'YouTube audio extraction service is running',
     endpoints: {
       '/': 'GET - Health check',
+      '/health': 'GET - Health check',
       '/extract-audio': 'POST - Extract audio from YouTube URL'
     }
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'YouTube audio extraction service is running'
   });
 });
 
