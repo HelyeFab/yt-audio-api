@@ -10,11 +10,10 @@ RUN pip3 install --no-cache-dir yt-dlp
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production
-
 COPY . .
+
+RUN npm install --production
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "ls -la && node server.js"]
+CMD ["sh", "-c", "echo 'Files in /app:' && ls -la && echo 'Starting server...' && node server.js"]
