@@ -9,6 +9,11 @@ const streamPipeline = promisify(pipeline);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+console.log('Server starting up...');
+console.log('PORT:', PORT);
+console.log('Current directory:', __dirname);
+console.log('Files in directory:', fs.readdirSync(__dirname));
+
 // Enable CORS for all origins
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
