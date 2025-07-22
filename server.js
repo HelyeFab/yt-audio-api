@@ -9,10 +9,12 @@ const streamPipeline = promisify(pipeline);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-console.log('Server starting up...');
+console.log('=== Server startup ===');
+console.log('Time:', new Date().toISOString());
 console.log('PORT:', PORT);
+console.log('Node version:', process.version);
 console.log('Current directory:', __dirname);
-console.log('Files in directory:', fs.readdirSync(__dirname));
+console.log('Environment:', process.env.NODE_ENV || 'development');
 
 // Enable CORS for all origins
 app.use((req, res, next) => {
@@ -127,6 +129,9 @@ function downloadAudio(url, outputPath) {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`=== Server started successfully ===`);
+  console.log(`Listening on http://0.0.0.0:${PORT}`);
+  console.log(`Health check available at: http://0.0.0.0:${PORT}/health`);
+  console.log(`Time: ${new Date().toISOString()}`);
 });
