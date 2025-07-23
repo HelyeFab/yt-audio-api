@@ -240,8 +240,12 @@ function downloadAudio(url, outputPath) {
       '--no-check-certificate',
       '--no-warnings',
       '--no-playlist',
+      '--no-cache-dir',
+      '--rm-cache-dir',
       '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       '--referer', 'https://www.youtube.com/',
+      '--add-header', 'Accept-Language:en-US,en;q=0.9',
+      '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
       '-o', `${outputPath}.%(ext)s`,
       url
     ];
@@ -272,8 +276,8 @@ function downloadAudio(url, outputPath) {
         let errorMsg = `yt-dlp exited with code ${code}`;
         
         // Parse common YouTube errors
-        if (stderrData.includes('Sign in to confirm')) {
-          errorMsg = 'YouTube requires sign-in. The video might be age-restricted or YouTube is blocking automated requests.';
+        if (stderrData.includes('Sign in to confirm') || stderrData.includes('bot')) {
+          errorMsg = 'YouTube is blocking the server. This is a known issue with cloud hosting providers.';
         } else if (stderrData.includes('Video unavailable')) {
           errorMsg = 'Video is unavailable. It might be private, deleted, or region-locked.';
         } else if (stderrData.includes('ERROR:')) {
@@ -282,10 +286,13 @@ function downloadAudio(url, outputPath) {
           if (errorMatch) {
             errorMsg = errorMatch[1];
           }
+        } else if (stderrData.includes('429') || stderrData.includes('Too Many Requests')) {
+          errorMsg = 'YouTube is rate limiting the server. Please try again later.';
         }
         
         console.error(`Full error - Stderr: ${stderrData}`);
         console.error(`Stdout: ${stdoutData}`);
+        console.error(`Exit code: ${code}`);
         reject(new Error(errorMsg));
       }
     });
