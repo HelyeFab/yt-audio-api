@@ -107,6 +107,23 @@ app.get('/test-extraction', async (req, res) => {
   }
 });
 
+// Test yt-dlp with verbose output
+app.get('/test-youtube', async (req, res) => {
+  const { exec } = require('child_process');
+  const testUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+  
+  // Run yt-dlp with verbose output
+  exec(`yt-dlp -v --simulate --no-warnings "${testUrl}"`, (error, stdout, stderr) => {
+    res.json({
+      success: !error,
+      exitCode: error ? error.code : 0,
+      stdout: stdout.substring(0, 5000), // Limit output size
+      stderr: stderr.substring(0, 5000),
+      error: error ? error.message : null
+    });
+  });
+});
+
 app.get('/test-deps', async (req, res) => {
   const { exec } = require('child_process');
   const { promisify } = require('util');
@@ -223,23 +240,8 @@ function downloadAudio(url, outputPath) {
       '--no-check-certificate',
       '--no-warnings',
       '--no-playlist',
-      '--cookies', cookiesPath,
       '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       '--referer', 'https://www.youtube.com/',
-      '--add-header', 'Accept-Language:en-US,en;q=0.9',
-      '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-      '--add-header', 'Sec-Ch-Ua-Mobile:?0',
-      '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
-      '--add-header', 'Sec-Fetch-Dest:document',
-      '--add-header', 'Sec-Fetch-Mode:navigate',
-      '--add-header', 'Sec-Fetch-Site:none',
-      '--add-header', 'Sec-Fetch-User:?1',
-      '--add-header', 'Upgrade-Insecure-Requests:1',
-      '--quiet',
-      '--no-simulate',
-      '--extract-flat', 'no',
-      '--no-check-formats',
       '-o', `${outputPath}.%(ext)s`,
       url
     ];
