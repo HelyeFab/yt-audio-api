@@ -7,8 +7,9 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install yt-dlp
-RUN pip3 install --no-cache-dir yt-dlp
+# Install yt-dlp with proper Python setup
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir yt-dlp
 
 WORKDIR /app
 
