@@ -5,6 +5,8 @@ const path = require('path');
 const { promisify } = require('util');
 const { pipeline } = require('stream');
 const streamPipeline = promisify(pipeline);
+const axios = require('axios');
+const FormData = require('form-data');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,7 +60,8 @@ app.get('/', (req, res) => {
     endpoints: {
       '/': 'GET - Health check',
       '/health': 'GET - Health check',
-      '/extract-audio': 'POST - Extract audio from YouTube URL'
+      '/extract-audio': 'POST - Extract audio from YouTube URL',
+      '/transcribe-audio': 'POST - Transcribe audio using Whisper API'
     }
   });
 });
@@ -157,6 +160,122 @@ app.get('/test-deps', async (req, res) => {
     dependencies: results,
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+// Transcribe audio using OpenAI Whisper API
+app.post('/transcribe-audio', async (req, res) => {
+  const { audioUrl, language = 'ja' } = req.body;
+  
+  if (!audioUrl) {
+    return res.status(400).json({ error: 'Audio URL is required' });
+  }
+  
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  if (!openaiApiKey) {
+    return res.status(500).json({ error: 'OpenAI API key not configured' });
+  }
+  
+  try {
+    console.log('Starting transcription for audio:', audioUrl);
+    
+    // Download the audio file temporarily
+    const tempDir = path.join(__dirname, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    const tempFilePath = path.join(tempDir, `audio_${Date.now()}.mp3`);
+    
+    // Download audio file
+    const response = await axios({
+      method: 'GET',
+      url: audioUrl,
+      responseType: 'stream'
+    });
+    
+    const writer = fs.createWriteStream(tempFilePath);
+    response.data.pipe(writer);
+    
+    await new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
+    
+    console.log('Audio downloaded, starting Whisper transcription...');
+    
+    // Create form data for Whisper API
+    const form = new FormData();
+    form.append('file', fs.createReadStream(tempFilePath));
+    form.append('model', 'whisper-1');
+    form.append('language', language);
+    form.append('response_format', 'verbose_json'); // Get timestamps
+    
+    // Call Whisper API
+    const whisperResponse = await axios.post(
+      'https://api.openai.com/v1/audio/transcriptions',
+      form,
+      {
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          ...form.getHeaders()
+        },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity
+      }
+    );
+    
+    // Clean up temp file
+    fs.unlinkSync(tempFilePath);
+    
+    // Parse Whisper response to our transcript format
+    const whisperData = whisperResponse.data;
+    const transcript = [];
+    
+    if (whisperData.segments) {
+      whisperData.segments.forEach((segment, index) => {
+        transcript.push({
+          id: String(index + 1),
+          text: segment.text.trim(),
+          startTime: segment.start,
+          endTime: segment.end,
+          words: segment.text.trim().split(/[\s、。！？]/g).filter(w => w.length > 0)
+        });
+      });
+    } else {
+      // Fallback if no segments provided
+      transcript.push({
+        id: '1',
+        text: whisperData.text,
+        startTime: 0,
+        endTime: 0,
+        words: whisperData.text.split(/[\s、。！？]/g).filter(w => w.length > 0)
+      });
+    }
+    
+    console.log(`Transcription complete. ${transcript.length} segments found.`);
+    
+    res.json({ 
+      transcript,
+      language: whisperData.language,
+      duration: whisperData.duration
+    });
+    
+  } catch (error) {
+    console.error('Transcription error:', error);
+    
+    if (error.response?.status === 401) {
+      res.status(401).json({ error: 'Invalid OpenAI API key' });
+    } else if (error.response?.status === 429) {
+      res.status(429).json({ error: 'OpenAI API rate limit exceeded. Please try again later.' });
+    } else if (error.response?.data?.error) {
+      res.status(500).json({ error: error.response.data.error.message });
+    } else {
+      res.status(500).json({ 
+        error: 'Failed to transcribe audio',
+        details: process.env.NODE_ENV !== 'production' ? error.message : undefined
+      });
+    }
+  }
 });
 
 app.post('/extract-audio', async (req, res) => {
