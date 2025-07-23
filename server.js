@@ -16,6 +16,25 @@ console.log('Node version:', process.version);
 console.log('Current directory:', __dirname);
 console.log('Environment:', process.env.NODE_ENV || 'development');
 
+// Check if yt-dlp is available
+const { exec } = require('child_process');
+exec('which yt-dlp', (error, stdout, stderr) => {
+  if (error) {
+    console.error('yt-dlp not found in PATH:', error);
+  } else {
+    console.log('yt-dlp found at:', stdout.trim());
+  }
+});
+
+// Check if ffmpeg is available
+exec('which ffmpeg', (error, stdout, stderr) => {
+  if (error) {
+    console.error('ffmpeg not found in PATH:', error);
+  } else {
+    console.log('ffmpeg found at:', stdout.trim());
+  }
+});
+
 // Enable CORS for all origins
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -86,7 +105,16 @@ app.post('/extract-audio', async (req, res) => {
     fs.unlinkSync(mp3Path);
   } catch (error) {
     console.error('Error processing audio:', error);
-    res.status(500).json({ error: 'Failed to process audio' });
+    // Return more detailed error in development
+    if (process.env.NODE_ENV !== 'production') {
+      res.status(500).json({ 
+        error: 'Failed to process audio',
+        details: error.message,
+        stack: error.stack
+      });
+    } else {
+      res.status(500).json({ error: 'Failed to process audio' });
+    }
   }
 });
 
