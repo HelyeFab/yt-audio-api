@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install yt-dlp with proper Python setup
-RUN python3 -m pip install --upgrade pip && \
-    python3 -m pip install --no-cache-dir yt-dlp
+RUN python3 -m pip install --upgrade pip --break-system-packages && \
+    python3 -m pip install --no-cache-dir --break-system-packages yt-dlp
 
 WORKDIR /app
 
