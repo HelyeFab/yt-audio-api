@@ -70,6 +70,42 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Test endpoint to check dependencies
+app.get('/test-deps', async (req, res) => {
+  const { exec } = require('child_process');
+  const { promisify } = require('util');
+  const execAsync = promisify(exec);
+  
+  const results = {};
+  
+  try {
+    const ytdlp = await execAsync('which yt-dlp');
+    results.ytdlp = { found: true, path: ytdlp.stdout.trim() };
+  } catch (e) {
+    results.ytdlp = { found: false, error: e.message };
+  }
+  
+  try {
+    const ffmpeg = await execAsync('which ffmpeg');
+    results.ffmpeg = { found: true, path: ffmpeg.stdout.trim() };
+  } catch (e) {
+    results.ffmpeg = { found: false, error: e.message };
+  }
+  
+  try {
+    const ytdlpVersion = await execAsync('yt-dlp --version');
+    results.ytdlpVersion = ytdlpVersion.stdout.trim();
+  } catch (e) {
+    results.ytdlpVersion = 'Unable to get version';
+  }
+  
+  res.json({
+    status: 'ok',
+    dependencies: results,
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 app.post('/extract-audio', async (req, res) => {
   const { url } = req.body;
   
