@@ -161,7 +161,23 @@ app.post('/extract-audio', async (req, res) => {
   }
   
   try {
-    await downloadAudio(url, outputPath);
+    console.log('Starting download for URL:', url);
+    console.log('Downloads directory exists:', fs.existsSync(outputDir));
+    
+    try {
+      await downloadAudio(url, outputPath);
+    } catch (downloadError) {
+      console.error('Download error details:', downloadError);
+      // Try to get more info about what's happening
+      const { exec } = require('child_process');
+      exec('ls -la /app', (err, stdout) => {
+        console.log('App directory contents:', stdout);
+      });
+      exec('which yt-dlp', (err, stdout) => {
+        console.log('yt-dlp location:', stdout || 'not found');
+      });
+      throw downloadError;
+    }
     
     const mp3Path = `${outputPath}.mp3`;
     if (!fs.existsSync(mp3Path)) {
@@ -197,10 +213,33 @@ function isValidYouTubeUrl(url) {
 
 function downloadAudio(url, outputPath) {
   return new Promise((resolve, reject) => {
+    // Create cookies file path
+    const cookiesPath = path.join(__dirname, 'cookies.txt');
+    
     const ytDlpArgs = [
       '-x',
       '--audio-format', 'mp3',
       '--audio-quality', '0',
+      '--no-check-certificate',
+      '--no-warnings',
+      '--no-playlist',
+      '--cookies', cookiesPath,
+      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      '--referer', 'https://www.youtube.com/',
+      '--add-header', 'Accept-Language:en-US,en;q=0.9',
+      '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+      '--add-header', 'Sec-Ch-Ua-Mobile:?0',
+      '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
+      '--add-header', 'Sec-Fetch-Dest:document',
+      '--add-header', 'Sec-Fetch-Mode:navigate',
+      '--add-header', 'Sec-Fetch-Site:none',
+      '--add-header', 'Sec-Fetch-User:?1',
+      '--add-header', 'Upgrade-Insecure-Requests:1',
+      '--quiet',
+      '--no-simulate',
+      '--extract-flat', 'no',
+      '--no-check-formats',
       '-o', `${outputPath}.%(ext)s`,
       url
     ];
@@ -208,8 +247,8 @@ function downloadAudio(url, outputPath) {
     console.log('Running yt-dlp with args:', ytDlpArgs);
     console.log('Output path:', outputPath);
     
-    // Use the known path for yt-dlp
-    const ytDlp = spawn('/usr/local/bin/yt-dlp', ytDlpArgs);
+    // Use yt-dlp from PATH
+    const ytDlp = spawn('yt-dlp', ytDlpArgs);
     
     let stdoutData = '';
     let stderrData = '';
@@ -228,8 +267,23 @@ function downloadAudio(url, outputPath) {
       if (code === 0) {
         resolve();
       } else {
-        const errorMsg = `yt-dlp exited with code ${code}. Stderr: ${stderrData}. Stdout: ${stdoutData}`;
-        console.error(errorMsg);
+        let errorMsg = `yt-dlp exited with code ${code}`;
+        
+        // Parse common YouTube errors
+        if (stderrData.includes('Sign in to confirm')) {
+          errorMsg = 'YouTube requires sign-in. The video might be age-restricted or YouTube is blocking automated requests.';
+        } else if (stderrData.includes('Video unavailable')) {
+          errorMsg = 'Video is unavailable. It might be private, deleted, or region-locked.';
+        } else if (stderrData.includes('ERROR:')) {
+          // Extract the actual error message from yt-dlp
+          const errorMatch = stderrData.match(/ERROR:\s*(.+)/);
+          if (errorMatch) {
+            errorMsg = errorMatch[1];
+          }
+        }
+        
+        console.error(`Full error - Stderr: ${stderrData}`);
+        console.error(`Stdout: ${stdoutData}`);
         reject(new Error(errorMsg));
       }
     });
