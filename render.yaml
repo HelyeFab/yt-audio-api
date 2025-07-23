@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: yt-audio-api
+    runtime: docker
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+    buildCommand: "" # Docker handles the build
+    startCommand: "" # Uses CMD from Dockerfile
