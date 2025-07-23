@@ -169,25 +169,37 @@ function downloadAudio(url, outputPath) {
       url
     ];
     
-    const ytDlp = spawn('yt-dlp', ytDlpArgs);
+    console.log('Running yt-dlp with args:', ytDlpArgs);
+    console.log('Output path:', outputPath);
+    
+    // Use the known path for yt-dlp
+    const ytDlp = spawn('/usr/local/bin/yt-dlp', ytDlpArgs);
+    
+    let stdoutData = '';
+    let stderrData = '';
     
     ytDlp.stdout.on('data', (data) => {
-      console.log(`yt-dlp: ${data}`);
+      stdoutData += data.toString();
+      console.log(`yt-dlp stdout: ${data}`);
     });
     
     ytDlp.stderr.on('data', (data) => {
-      console.error(`yt-dlp error: ${data}`);
+      stderrData += data.toString();
+      console.error(`yt-dlp stderr: ${data}`);
     });
     
     ytDlp.on('close', (code) => {
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`yt-dlp exited with code ${code}`));
+        const errorMsg = `yt-dlp exited with code ${code}. Stderr: ${stderrData}. Stdout: ${stdoutData}`;
+        console.error(errorMsg);
+        reject(new Error(errorMsg));
       }
     });
     
     ytDlp.on('error', (err) => {
+      console.error('Failed to spawn yt-dlp:', err);
       reject(err);
     });
   });
