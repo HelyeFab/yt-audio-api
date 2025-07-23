@@ -71,6 +71,42 @@ app.get('/health', (req, res) => {
 });
 
 // Test endpoint to check dependencies
+// Test extraction with a direct MP3 URL
+app.get('/test-extraction', async (req, res) => {
+  try {
+    const testUrl = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+    const outputPath = path.join(__dirname, 'downloads', `test_${Date.now()}`);
+    
+    if (!fs.existsSync(path.join(__dirname, 'downloads'))) {
+      fs.mkdirSync(path.join(__dirname, 'downloads'), { recursive: true });
+    }
+    
+    // Download with curl instead of yt-dlp for testing
+    const { exec } = require('child_process');
+    exec(`curl -L "${testUrl}" -o "${outputPath}.mp3"`, (error, stdout, stderr) => {
+      if (error) {
+        res.status(500).json({ error: 'Failed to download test file', details: error.message });
+        return;
+      }
+      
+      if (fs.existsSync(`${outputPath}.mp3`)) {
+        const stats = fs.statSync(`${outputPath}.mp3`);
+        fs.unlinkSync(`${outputPath}.mp3`);
+        res.json({ 
+          success: true, 
+          message: 'Test download successful',
+          fileSize: stats.size,
+          downloadsDir: path.join(__dirname, 'downloads')
+        });
+      } else {
+        res.status(500).json({ error: 'Downloaded file not found' });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Test failed', details: error.message });
+  }
+});
+
 app.get('/test-deps', async (req, res) => {
   const { exec } = require('child_process');
   const { promisify } = require('util');
